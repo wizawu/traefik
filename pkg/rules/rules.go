@@ -1,8 +1,11 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
+	"hash/fnv"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/containous/traefik/v2/pkg/log"
@@ -19,6 +22,7 @@ var funcs = map[string]func(*mux.Route, ...string) error{
 	"Method":        methods,
 	"Headers":       headers,
 	"HeadersRegexp": headersRegexp,
+	"HeadersWeight": headersWeight,
 	"Query":         query,
 }
 
@@ -162,6 +166,34 @@ func headers(route *mux.Route, headers ...string) error {
 
 func headersRegexp(route *mux.Route, headers ...string) error {
 	return route.HeadersRegexp(headers...).GetError()
+}
+
+func headersWeight(route *mux.Route, weights ...string) error {
+	if len(weights) == 4 {
+		if _, err := strconv.ParseUint(weights[1], 10, 64); err != nil {
+			return err
+		} else if _, err := strconv.ParseUint(weights[2], 10, 64); err != nil {
+			return err
+		} else if _, err := strconv.ParseUint(weights[3], 10, 64); err != nil {
+			return err
+		}
+
+		return route.MatcherFunc(func(req *http.Request, rm *mux.RouteMatch) bool {
+			header := req.Header.Get(weights[0])
+			headerHash := fnv.New64a()
+			if _, err := headerHash.Write([]byte(header)); err != nil {
+				log.FromContext(req.Context()).Warnf("Could not hash header '%s': %s", header, err.Error())
+				return false
+			}
+			total, _ := strconv.ParseUint(weights[1], 10, 64)
+			left, _ := strconv.ParseUint(weights[2], 10, 64)
+			right, _ := strconv.ParseUint(weights[3], 10, 64)
+			pos := headerHash.Sum64() % total
+			return left <= pos && pos <= right
+		}).GetError()
+	} else {
+		return errors.New("HeadersWeight requires 4 arguments")
+	}
 }
 
 func query(route *mux.Route, query ...string) error {

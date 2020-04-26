@@ -214,6 +214,46 @@ func Test_addRoute(t *testing.T) {
 			},
 		},
 		{
+			desc: "HeadersWeight with matching header",
+			rule: "HeadersWeight(`X-Version`, `7`, `4`, `4`)",
+			headers: map[string]string{
+				"X-Version": "latest",
+			},
+			expected: map[string]int{
+				"http://localhost/foo": http.StatusOK,
+			},
+		},
+		{
+			desc: "HeadersWeight with lower weight",
+			rule: "HeadersWeight(`X-Version`, `7`, `0`, `3`)",
+			headers: map[string]string{
+				"X-Version": "latest",
+			},
+			expected: map[string]int{
+				"http://localhost/foo": http.StatusNotFound,
+			},
+		},
+		{
+			desc: "HeadersWeight with higher weight",
+			rule: "HeadersWeight(`X-Version`, `7`, `5`, `6`)",
+			headers: map[string]string{
+				"X-Version": "latest",
+			},
+			expected: map[string]int{
+				"http://localhost/foo": http.StatusNotFound,
+			},
+		},
+		{
+			desc: "HeadersWeight with overflow weight",
+			rule: "HeadersWeight(`X-Version`, `7`, `0`, `7`)",
+			headers: map[string]string{
+				"X-Version": "latest",
+			},
+			expected: map[string]int{
+				"http://localhost/foo": http.StatusOK,
+			},
+		},
+		{
 			desc: "Query with multiple params",
 			rule: "Query(`foo=bar`, `bar=baz`)",
 			expected: map[string]int{
