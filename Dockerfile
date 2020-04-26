@@ -1,6 +1,6 @@
-FROM scratch
+FROM alpine:3.11.3
 COPY script/ca-certificates.crt /etc/ssl/certs/
-COPY dist/traefik /
+COPY dist/traefik /usr/bin/
 EXPOSE 80
-VOLUME ["/tmp"]
-ENTRYPOINT ["/traefik"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]
