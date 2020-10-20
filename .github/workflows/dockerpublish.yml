@@ -1,29 +1,22 @@
-name: Docker
-
+name: build docker image
 on:
   push:
     branches:
-      - master
-
-env:
-  IMAGE_NAME: traefik
-
+      - main
 jobs:
-  push:
+  build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build image
+      - name: login registry
+        run: echo ${{secrets.DOCKER_HUB_PASSWORD}} | docker login -u wizawu --password-stdin
+
+      - name: build image
         run: make build-image
 
-      - name: Log into registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+      - name: tag image
+        run: docker tag containous/traefik wizawu/traefik:2.2-$(git log -1 --oneline | head -c 7)
 
-      - name: Push image
-        run: |
-          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
-          VERSION=latest
-          docker tag containous/traefik $IMAGE_ID:$VERSION
-          docker push $IMAGE_ID:$VERSION
+      - name: push image
+        run: docker push wizawu/traefik:2.2-$(git log -1 --oneline | head -c 7)
